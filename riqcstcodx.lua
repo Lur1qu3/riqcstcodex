@@ -41,7 +41,7 @@ local version = " CUSTOM"
 local nick = "RIQUE".. version
 local Nome = UI.Label(nick)
 
-modules.game_textmessage.displayGameMessage("["..nick.."] Bem Vindo A Custom RIQUE!!")
+modules.game_textmessage.displayGameMessage("["..nick.."] Buff Devolta/Escadas/Enemy e EnemyPK")
 
 local cores = {"green", "red", "black", "green", "orange"}
 local cores2 = 0
@@ -259,6 +259,22 @@ end)
 
 
 
+local config = {
+      spell = storage.buff;
+      cooldown = storage.cdbuff;
+}
+
+
+macro(100, "Buff", function()
+    if (isInPz()) then return; end
+     if not config.cdw or config.cdw <= now then
+        say(config.spell)
+        config.cdw = now + (config.cooldown * 1000)
+     end
+end)
+
+
+
 
 Push = {}
 
@@ -382,6 +398,22 @@ if keys == "Escape" then
 g_game.cancelAttack()
   end
 end)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -715,32 +747,7 @@ end
 
 
 
-local table_sem_nome = {
-    {storage.saytarget, storage.reflect},
-};
 
-
-getTargetName = function()
-    if (not g_game.isAttacking()) then return; end
-    local target = g_game.getAttackingCreature();
-    if (not target:isPlayer()) then return; end
-    return target:getName();
-end
-
-onTalk(function(name, level, mode, text, channelId, pos)
-    if name ~= getTargetName() then return; end
-    text = text:lower();
-
-    for _, config in ipairs(table_sem_nome) do
-        local toFilter = config[1]:lower():trim();
-        local toSay = config[2]:lower():trim();
-        if text == toFilter then
-       stopCombo = now + 50;
-            say(toSay)
-            break;
-        end
-    end
-end);
 
 local NomeDoJogador = storage.nomeDoJogador or "DBO"
 local MensagemPrivada = "Inimigos avistado, "
@@ -790,316 +797,58 @@ macro(250, "Follow", function()
            end)
 
 
-followTarget = {}
 
 
-local tileCache = {}
-local cacheTimeout = 3000 
 
 
-local function isCacheValid(tilePos)
-    local cache = tileCache[followTarget.postostring(tilePos)]
-    return cache and (now - cache.time < cacheTimeout) and cache.result
+
+
+
+
+
+
+
+
+
+
+
+macro(200, "Enemy", function() 
+
+for _,pla in ipairs(getSpectators(posz())) do
+
+attacked = g_game.getAttackingCreature()
+
+if not attacked or attacked:isMonster() or attacked:isPlayer() and pla:getHealthPercent() < attacked:getHealthPercent()*0.6 then
+if pla:isPlayer() and pla:getEmblem() ~= 1 and pla:getSkull() <= 3 then 
+g_game.attack(pla)
+end
 end
 
-followTarget.postostring = function(pos)
-    return (pos.x .. "," .. pos.y .. "," .. pos.z)
 end
 
-function followTarget.accurateDistance(a, b)
-    if type(a) == "userdata" then
-        a = a:getPosition()
-    end
-    if not b then
-        b = pos()
-    end
-    if a then
-        return math.abs(b.x - a.x) + math.abs(a.y - b.y)
-    end
-end
+delay(100)
 
-followTarget.targetPos = {}
-actualPosition = function()
-    return followTarget.targetPos[pos().z]
-end
-
-
-stairsIds = {}
-if storage.stairsIds then
-    for index, id in ipairs(storage.stairsIds) do
-        stairsIds[tostring(id)] = true
-    end
-end
-
-excludeIds = {}
-if storage.excludeIds then
-    for index, id in ipairs(storage.excludeIds) do
-        excludeIds[tostring(id)] = true
-    end
-end
-
-
-followTarget.checkTile = function(tile)
-    if not tile then return false end
-
-    local tilePos = tile:getPosition()
-
-    
-    if isCacheValid(tilePos) then
-        return tileCache[followTarget.postostring(tilePos)].result
-    end
-
-    local topThing = tile:getTopUseThing()
-    if not topThing then return false end
-    local topId = topThing:getId()
-
-    for _, x in ipairs(tile:getItems()) do
-        if excludeIds[tostring(x:getId())] then
-            return false
-        end
-    end
-
-    local result
-    if stairsIds[tostring(topId)] then
-        result = true
-    else
-        local cor = g_map.getMinimapColor(tilePos)
-        result = (cor >= 210 and cor <= 213 and not tile:isPathable() and tile:isWalkable())
-    end
-
-    
-    tileCache[followTarget.postostring(tilePos)] = {time = now, result = result}
-    
-    return result
-end
-
-followTarget.isRightDistance = function(p1, p2)
-    local pPos = player:getPosition()
-    if p1.x > pPos.x and p2.x > pPos.x then
-        if p1.y > pPos.y and p2.y > pPos.y then
-            return true
-        elseif p1.y < pPos.y and p2.y < pPos.y then
-            return true
-        elseif p1.y == pPos.y and p2.y == pPos.y then
-            return true
-        end
-    elseif p1.x < pPos.x and p2.x < pPos.x then
-        if p1.y > pPos.y and p2.y > pPos.y then
-            return true
-        elseif p1.y < pPos.y and p2.y < pPos.y then
-            return true
-        elseif p1.y == pPos.y and p2.y == pPos.y then
-            return true
-        end
-    elseif p1.x == pPos.x and p2.x == pPos.x then
-        if p1.y > pPos.y and p2.y > pPos.y then
-            return true
-        elseif p1.y < pPos.y and p2.y < pPos.y then
-            return true
-        end
-    end
-    return false
-end
-
-followTarget.goUse = function(pos, distance)
-    local pPos = player:getPosition()
-    local tile
-    if distance <= 3 then
-        tile = g_map.getTile(pos)
-        return tile and g_game.use(tile:getTopUseThing())
-    else
-        local path = findEveryPath(pos, 20, {ignoreNonPathable = true})
-        for key, value in pairs(path) do
-            key = key:split(",")
-            local position = {x = tonumber(key[1]), y = tonumber(key[2]), z = tonumber(key[3])}
-            local dist = getDistanceBetween(pPos, position)
-            if dist == 3 and followTarget.isRightDistance(pos, position) then
-                local checkTile = g_map.getTile(position)
-                if checkTile and checkTile:canShoot() then
-                    if not tile or tileDistance > followTarget.accurateDistance(pPos, position) then
-                        tile = g_map.getTile(position)
-                        tileDistance = followTarget.accurateDistance(tile:getPosition(), pPos)
-                    end
-                end
-            end
-        end
-        if tile then
-            return g_game.use(tile:getTopUseThing())
-        end
-    end
-end
-
-
-followTarget.checkAll = function(n)
-    if n > 9 then
-        return
-    end
-    local pos = actualPosition()
-    local tiles = {}
-    for x = -n, n do
-        for y = -n, n do
-            local tilePos = {x = pos.x + x, y = pos.y + y, z = pos.z}
-            local tile = g_map.getTile(tilePos)
-            if followTarget.checkTile(tile) and (findPath(tilePos, pos) or findPath(pos, tilePos)) then
-                table.insert(tiles, {tile = tile, distance = followTarget.accurateDistance(tilePos, pos)})
-            end
-        end
-    end
-    if #tiles == 0 then
-        return followTarget.checkAll(n + 1)
-    end
-    table.sort(tiles, function(a, b) return a.distance < b.distance end)
-    return tiles[1].tile
-end
-
-macroCheck =
-    macro(
-    200,
-    "Full Attack Follow", "F10", function()
-        local checkPos = actualPosition()
-        if followTarget.tryWalk or not checkPos or not checkPlayer then
-            return
-        end
-    if not lookForTarget or now - lookForTarget[2] > 500 then
-      local check = getCreatureById(checkPlayer:getId())
-      lookForTarget = check and {check, now}
-    end
-    if followTarget.lastPosition == followTarget.postostring(checkPos) then
-      if followTarget.See then
-        if not lookForTarget then
-          local pos = pos()
-          followTarget.distance = getDistanceBetween(checkPos, pos)
-          followTarget.See:setText("AQUI", "green")
-          if followTarget.See:isWalkable() then
-            if not followTarget.See:isPathable() then
-              if autoWalk(followTarget.See:getPosition(), 1) then
-                followTarget.tryWalk = true
-                return
-              end
-            end
-            followTarget.goUse(followTarget.See:getPosition(), followTarget.distance)
-          end
-        else
-          local lookForTargetPos = lookForTarget[1]:getPosition()
-          if lookForTargetPos then
-            followTarget.targetPos[lookForTargetPos.z] = lookForTargetPos
-          end
-          followTarget.See:setText("AQUI", "red")
-        end
-      end
-      return
-    end
-    if followTarget.See then
-        followTarget.See:setText("")
-    end
-    followTarget.See = followTarget.checkAll(0)
-    followTarget.lastPosition = followTarget.postostring(checkPos)
-    end
-)
-
-macro(
-    100,
-    function()
-        if macroCheck.isOff() then
-            return
-        end
-        if modules.corelib.g_keyboard.isKeyPressed("escape") then
-            target = nil
-            checkPlayer = nil
-            return g_game.cancelAttack()
-        end
-        local target = actualTarget()
-        if target and target:isPlayer() then
-            local targetPos = target:getPosition()
-            if targetPos then
-                checkPlayer = target
-                followTarget.targetPos[targetPos.z] = targetPos
-            end
-        end
-        local targetPos = checkPlayer and checkPlayer:getPosition()
-        if targetPos and targetPos.z == pos().z and not g_game.isAttacking() then
-            modules.game_interface.processMouseAction(nil, 2, pos(), nil, checkPlayer, checkPlayer)
-            delay(1000)
-            return
-        end
-    end
-)
-
-onCreaturePositionChange(
-    function(creature, newPos, oldPos)
-        if not newPos or not oldPos then
-            return
-        end
-        if creature == player then
-            if followTarget.targetPos[oldPos.z] and followTarget.See and table.equals(newPos, followTarget.See:getPosition()) and followTarget.tryWalk then
-                followTarget.tryWalk = nil
-                followTarget.See = nil
-                followTarget.targetPos[oldPos.z] = nil
-            end
-        elseif creature == checkPlayer then
-            followTarget.targetPos[newPos.z] = newPos
-        end
-    end
-)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-UI.Button("Amiguinhos", function()
-  UI.MultilineEditorWindow(storage.FriendText or "", {title="Amigos", description="Adicionados", width=250, height=200}, function(text)
-      storage.FriendText = text
-      reload()
-  end)
 end)
 
 
-isAmigo = function(name)
-  if type(name) ~= 'string' then
-      name = name:getName()
-  end
-  local tabela = storage.FriendText and storage.FriendText:split('\n') or {}
-  return table.find(tabela, name:trim(), true) ~= nil
+
+macro(200, "Enemy PK", function() 
+
+for _,pla in ipairs(getSpectators(posz())) do
+
+attacked = g_game.getAttackingCreature()
+
+if not attacked or attacked:isMonster() or attacked:isPlayer() and pla:getHealthPercent() < attacked:getHealthPercent()*0.6 then
+if pla:isPlayer() and pla:getEmblem() ~= 1 and pla:getSkull() == 3 then 
+g_game.attack(pla)
+end
 end
 
+end
 
-local Enemy = macro(50, 'Enemy', function() 
-  local possibleTarget = nil
-  local possibleTargetHP = 100 
+delay(100)
 
-  for _, creature in ipairs(getSpectators(posz())) do
-      local specHP = creature:getHealthPercent()
-      if creature:isPlayer() and specHP and specHP > 0 then
-          if not isAmigo(creature) and creature:getEmblem() ~= 1 then
-              if creature:canShoot(9) then
-                  if not possibleTarget or possibleTargetHP > specHP or (possibleTargetHP == specHP and possibleTarget:getId() < creature:getId()) then
-                      possibleTarget = creature
-                      possibleTargetHP = specHP
-                  end
-              end
-          end
-      end
-  end
-
-  if possibleTarget and g_game.getAttackingCreature() ~= possibleTarget then
-      g_game.attack(possibleTarget)
-  end
 end)
-
-addIcon("Enemy", {item = 21979, text = "Enemy"}, Enemy)
-
 
 
 
@@ -1165,6 +914,285 @@ for _, healingInfos in ipairs({storage.manatrainer}) do
     healingmacro.setOn(healingInfos.on)
   end)
 end 
+
+
+
+
+
+Stairs = {}
+
+excludeIds = {}
+
+stairsIds = {storage.escadinhas}
+
+
+isKeyPressed = modules.corelib.g_keyboard.isKeyPressed;
+
+
+for index, id in ipairs(stairsIds) do
+    stairsIds[tostring(id)] = true
+    stairsIds[index] = nil
+end
+
+for index, id in ipairs(excludeIds) do
+    excludeIds[tostring(id)] = true
+    excludeIds[index] = nil
+end
+
+Stairs = {}
+
+Stairs.saveStatus = {}
+
+Stairs.checkTile = function(tile)
+    if not tile then
+        return false
+    end
+
+    local tilePos = tile:getPosition()
+
+    if not tilePos then
+        return
+    end
+
+    local onString = Stairs.postostring(tilePos)
+
+    local checkStatus = Stairs.saveStatus[onString]
+
+    local itemsOnTile = tile:getItems()
+
+    if checkStatus and ((type(checkStatus[1]) == "number" and #itemsOnTile == checkStatus[1]) or checkStatus[1] == true) then
+        return checkStatus[2]
+    end
+
+    local topThing = tile:getTopUseThing()
+
+    if not topThing then
+        return false
+    end
+
+    for _, x in ipairs(itemsOnTile) do
+        if excludeIds[tostring(x:getId())] then
+            Stairs.saveStatus[onString] = {#itemsOnTile, false}
+            return false
+        end
+    end
+
+    if stairsIds[tostring(topThing:getId())] then
+        Stairs.saveStatus[onString] = {true, true}
+        return true
+    end
+
+    local cor = g_map.getMinimapColor(tile:getPosition())
+    if cor >= 210 and cor <= 213 and not tile:isPathable() and tile:isWalkable() then
+        Stairs.saveStatus[onString] = {true, true}
+        return true
+    else
+        Stairs.saveStatus[onString] = {#itemsOnTile, false}
+        return false
+    end
+end
+
+Stairs.postostring = function(pos)
+    return pos.x .. "," .. pos.y .. "," .. pos.z
+end
+
+function Stairs.accurateDistance(p1, p2)
+    if type(p1) == "userdata" then
+        p1 = p1:getPosition()
+    end
+    if type(p2) ~= "table" then
+        p2 = pos()
+    end
+    return math.abs(p1.x - p2.x) + math.abs(p1.y - p2.y)
+end
+
+Stairs.getPosition = function(pos, dir)
+    if dir == 0 then
+        pos.y = pos.y - 1
+    elseif dir == 1 then
+        pos.x = pos.x + 1
+    elseif dir == 2 then
+        pos.y = pos.y + 1
+    else
+        pos.x = pos.x - 1
+    end
+
+    return pos
+end
+
+function table.reverse(t)
+  local newTable = {}
+  local j = 0
+  for i = #t, 1, -1 do
+    j = j + 1
+    newTable[j] = t[i]
+  end
+  return newTable
+end
+
+function reverseDirection(dir)
+  if dir == 0 then
+    return 2
+  elseif dir == 1 then
+    return 3
+  elseif dir == 2 then
+    return 0
+  elseif dir == 3 then
+    return 1
+  end
+end
+
+Stairs.goUse = function(pos)
+    local playerPos = player:getPosition()
+    local path = findPath(pos, playerPos)
+    if not path then
+        return
+    end
+  path = table.reverse(path)
+    for i, v in ipairs(path) do
+        if i > 5 then
+            break
+        end
+        playerPos = Stairs.getPosition(playerPos, reverseDirection(v))
+    end
+    local tile = g_map.getTile(playerPos)
+    local topThing = tile and tile:getTopUseThing()
+    if topThing then
+    g_game.use(topThing)
+    if table.equals(tile:getPosition(), pos) then
+      return delay(300)
+    end
+  end
+end
+
+Stairs.checkAll = function(n)
+    n = n and n + 1 or 1
+    if n > 9 then
+        return
+    end
+    local pos = pos()
+    local tiles = {}
+    for x = -n, n do
+        for y = -n, n do
+            local stairPos = {x = pos.x + x, y = pos.y + y, z = pos.z}
+            local tile = g_map.getTile(stairPos)
+            if Stairs.checkTile(tile) and findPath(stairPos, pos) then
+                table.insert(tiles, {tile = tile, distance = Stairs.accurateDistance(pos, stairPos)})
+            end
+        end
+    end
+    if #tiles == 0 then
+        return Stairs.checkAll(n)
+    end
+    table.sort(
+        tiles,
+        function(a, b)
+            return a.distance < b.distance
+        end
+    )
+    return tiles[1].tile
+end
+
+stand = now
+onPlayerPositionChange(
+    function(newPos, oldPos)
+        stand = now
+        tryWalk = nil
+        if newPos.z ~= oldPos.z or getDistanceBetween(oldPos, newPos) > 1 or table.equals(Stairs.pos, newPos) then
+            Stairs.walk.setOff()
+        end
+        if Stairs.walk.isOff() then
+            checked = nil
+        end
+    end
+)
+
+timeInPos = function()
+    return now - stand
+end
+
+onAddThing(
+    function(tile, thing)
+        if type(Stairs.pos) == "table" then
+            if table.equals(tile:getPosition(), Stairs.pos) then
+                Stairs.bestTile = tile
+            end
+        end
+    end
+)
+
+markOnThing = function(thing, color)
+    if thing then
+        if thing:getPosition() then
+            local useThing = thing:getTopUseThing()
+            if color == "#00FF00" then
+                thing:setText("AQUI", "green")
+            elseif color == "#FF0000" then
+                thing:setText("AQUI", "red")
+            else
+                thing:setText("")
+            end
+            return true
+        end
+    end
+    return false
+end
+
+Stairs.walk =
+    macro(
+    1,
+    function()
+        if modules.corelib.g_keyboard.isKeyPressed("Escape") then
+            return Stairs.walk.setOff()
+        end
+        player:lockWalk(300)
+        if tryWalk then
+            return
+        end
+        markOnThing(Stairs.bestTile, "#00FF00")
+        if Stairs.bestTile:isWalkable() then
+            if not Stairs.bestTile:isPathable() then
+                if autoWalk(Stairs.pos, 1) then
+                    tryWalk = true
+                    return
+                end
+            end
+        end
+        return Stairs.goUse(Stairs.pos)
+    end
+)
+
+Stairs.walk.setOff()
+
+stairMacro =
+    macro(
+    1,
+    "Escadinhas",
+    function()
+        if Stairs.walk.isOn() then
+            return
+        end
+        local pos = Stairs.postostring(pos())
+        if pos ~= Stairs.lastPos then
+            markOnThing(Stairs.bestTile, "")
+            Stairs.bestTile = Stairs.checkAll()
+            Stairs.pos = Stairs.bestTile and Stairs.bestTile:getPosition()
+            markOnThing(Stairs.bestTile, "#FF0000")
+            Stairs.lastPos = pos
+        end
+        if
+            modules.corelib.g_keyboard.isKeyPressed("Space") and Stairs.bestTile and
+                not modules.game_console:isChatEnabled()
+         then
+            Stairs.walk.setOn()
+            return
+        else
+            return markOnThing(Stairs.bestTile, "#FF0000")
+        end
+    end
+)
+
+addIcon("Escada", {item = 1958, text = "Escadas"}, stairMacro)
 
 
 
@@ -2161,15 +2189,22 @@ end,hpPanel5)
 
 addIcon("Mystic Full", {item=2993, movable=true, text = "Mystic Full"}, mysticfull)
 
-UI.Label('TargetSay//Reflect',hpPanel5)
-UI.TextEdit(storage.saytarget or "Buffs", function(widget, newText)
-  storage.saytarget = newText
+
+
+UI.Label('SpellBuff',hpPanel5):setColor('green')
+addTextEdit("buff", storage.buff or "buff, cd", function(widget, text) 
+storage.buff = text
+end,hpPanel5)
+
+UI.Label('Segundos',hpPanel5):setColor('green')
+addTextEdit("buff", storage.cdbuff or "buff, cd", function(widget, text) 
+storage.cdbuff = text
 end,hpPanel5)
 
 
-UI.TextEdit(storage.reflect or "Buffs", function(widget, newText)
-  storage.reflect = newText
-end,hpPanel5)
+
+
+
 
 
 TabBar:addTab("Fuga", hpPanel6)
@@ -2455,12 +2490,12 @@ UI.Separator()
 
 local castBelowHp = 70 
 
-mystic60 = macro(100, "Mystic Defense/Kai",  function()
+mystic60 = macro(100, "Defense/Kai",  function()
   if (hppercent() < castBelowHp and not hasManaShield()) then
-    say('Mystic Defense') 
+    say(storage.spelldef) 
   end
   if (hppercent() >= castBelowHp and hasManaShield()) then
-    say('Mystic Kai')
+    say(storage.spellkai)
   end
 end,hpPanel5)
 
@@ -2512,8 +2547,20 @@ addIcon("Def/kai", {item=2993, movable=true, text = "Def/kai"}, mystic60)
 
 
 
+UI.Label('Spell Defense')
+addTextEdit("magic shield", storage.spelldef or "magic shield", function(widget, text) 
+storage.spelldef = text
+end)
+UI.Label('Spell Kai')
+addTextEdit("magic cancel", storage.spellkai or "magic cancel", function(widget, text) 
+storage.spellkai = text
+end)
 
 
+UI.Label('Ids Escadinhas')
+addTextEdit("ids", storage.escadinhas or "ids", function(widget, text)
+    storage.escadinhas = text
+end)
 
 
 UI.Label("[VIGIA]: Receber PM:")
@@ -2571,3 +2618,4 @@ UI.Separator()
 --modules.corelib.HTTP.get(v0, function(script) 
 --    assert(loadstring(script))() 
 --end)
+
